@@ -49,20 +49,24 @@ async def read_root():
 
 @app.get("/items", response_model=List[Item])
 async def get_items():
-    return items
+    keys = redis_client.keys("item:*")
+    result = []
+    for key in keys:
+        data = redis_client.get(key)
+        if data:
+            result.append(Item(**json.loads(data)))
+    result.sort(key=lambda x: x.id)
+    return result
 
 @app.post("/items", response_model=Item)
 async def create_item(item: Item):
-    global current_id
-    current_id += 1
-    item.id = current_id
-    items.append(item)
+    item.id = redis_client.incr("item_id_counter")
+    redis_client.set(f"item:{item.id}", json.dumps(item.model_dump()))
     return item
 
 @app.delete("/items/{item_id}")
 async def delete_item(item_id: int):
-    global items
-    items = [item for item in items if item.id != item_id]
+    redis_client.delete(f"item:{item_id}")
     return {"status": "deleted", "id": item_id}
 
 # Health check endpoint for loadbalancer
