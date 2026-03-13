@@ -1,5 +1,2 @@
 fastapi
 uvicorn
-redis
-google-auth
-requests
